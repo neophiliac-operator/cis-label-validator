@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
+import { supabase } from '@/lib/supabase'
+import { notifyUpload } from '@/lib/notify'
 
 // ============================================================
 // CIS LABEL VALIDATOR - SERVER-SIDE ENGINE (TypeScript port)
@@ -589,7 +591,8 @@ export async function POST(request: NextRequest) {
 
     const status = errors > 0 ? 'FAIL' : warnings > 0 ? 'PASS_WITH_WARNINGS' : 'PASS'
 
-    return NextResponse.json({
+    // Log to Supabase (fire and forget)
+    const responseData = {
       filename: file.name,
       status,
       sheets_analyzed: profiles.length,
@@ -616,7 +619,37 @@ export async function POST(request: NextRequest) {
         sheet: f.sheet,
         rows: f.rows.slice(0, 50),
       })),
-    })
+    }
+
+    // Log to Supabase (non-blocking)
+    try {
+      const { error: dbError } = await supabase.from('validation_uploads').insert({
+        filename: file.name,
+        status,
+        sheets_analyzed: profiles.length,
+        total_labels: totalLabels,
+        errors,
+        warnings,
+        info,
+        findings: allFindings.slice(0, 100),
+        profiles: profiles.map(p => ({ sheet: p.sheet, type: p.type, rows: p.rows })),
+      })
+      if (dbError) console.error('[DB] Log failed:', dbError)
+      else console.log(`[DB] Logged: ${file.name} → ${status}`)
+    } catch (e) { /* ignore */ }
+
+    // Send email notification (non-blocking)
+    notifyUpload({
+      filename: file.name,
+      status,
+      errors,
+      warnings,
+      info,
+      sheets: profiles.length,
+      labels: totalLabels,
+    }).catch(() => {})
+
+    return NextResponse.json(responseData)
   } catch (err: any) {
     console.error('Validation error:', err)
     return NextResponse.json({ error: err.message || 'Validation failed' }, { status: 500 })

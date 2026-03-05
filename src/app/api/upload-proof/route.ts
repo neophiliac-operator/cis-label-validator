@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
+import { supabase } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +11,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No proof file uploaded' }, { status: 400 })
     }
 
-    // Validate file type
     const allowedTypes = [
       'application/pdf',
       'image/png', 'image/jpeg', 'image/gif', 'image/webp',
@@ -20,27 +18,34 @@ export async function POST(request: NextRequest) {
       'application/msword',
     ]
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Unsupported file type. Please upload PDF, image, or Word document.' }, { status: 400 })
+      return NextResponse.json({ error: 'Unsupported file type.' }, { status: 400 })
     }
 
-    // Max 50MB
     if (file.size > 50 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File too large. Maximum 50MB.' }, { status: 400 })
+      return NextResponse.json({ error: 'File too large. Max 50MB.' }, { status: 400 })
     }
-
-    // Save to /tmp/proofs/ (ephemeral on Render, but we'll move to Supabase storage later)
-    const uploadsDir = path.join('/tmp', 'proofs')
-    await mkdir(uploadsDir, { recursive: true })
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const safeDataName = dataFilename.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const filename = `${timestamp}_${safeDataName}_PROOF_${safeName}`
+    const storagePath = `${timestamp}_${safeDataName}_PROOF_${safeName}`
     
     const buffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(path.join(uploadsDir, filename), buffer)
 
-    console.log(`[PROOF UPLOAD] ${filename} (${(file.size / 1024).toFixed(1)} KB) — paired with data file: ${dataFilename}`)
+    // Upload to Supabase Storage
+    const { error } = await supabase.storage
+      .from('proofs')
+      .upload(storagePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      })
+
+    if (error) {
+      console.error('[PROOF] Storage upload failed:', error)
+      return NextResponse.json({ error: 'Failed to store proof file' }, { status: 500 })
+    }
+
+    console.log(`[PROOF] ${storagePath} (${(file.size / 1024).toFixed(1)} KB) → Supabase Storage`)
 
     return NextResponse.json({
       success: true,
@@ -49,7 +54,7 @@ export async function POST(request: NextRequest) {
       pairedWith: dataFilename,
     })
   } catch (err: any) {
-    console.error('[PROOF UPLOAD ERROR]', err)
+    console.error('[PROOF ERROR]', err)
     return NextResponse.json({ error: 'Failed to upload proof file' }, { status: 500 })
   }
 }
