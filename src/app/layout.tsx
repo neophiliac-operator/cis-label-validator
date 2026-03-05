@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <nav className="bg-cis-navy text-white px-6 py-4 shadow-lg">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-cis-orange rounded-sm flex items-center justify-center font-bold text-sm">CIS</div>
+              <img src="/cis-logo.png" alt="Country Innovation & Supply" className="h-10 w-auto" />
               <span className="text-lg font-semibold">Label Validator</span>
             </div>
             <div className="text-sm text-gray-300">
