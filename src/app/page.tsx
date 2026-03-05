@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import FileUpload from '@/components/FileUpload'
+import ProofUpload from '@/components/ProofUpload'
 import ValidationResults from '@/components/ValidationResults'
 
 export type Finding = {
@@ -40,11 +41,27 @@ export default function Home() {
   const [report, setReport] = useState<ValidationReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dataFileName, setDataFileName] = useState<string | null>(null)
+  const [proofUploaded, setProofUploaded] = useState(false)
+
+  const handleProofUpload = useCallback(async (file: File) => {
+    try {
+      const formData = new FormData()
+      formData.append('proof', file)
+      formData.append('dataFilename', dataFileName || 'unknown')
+      const response = await fetch('/api/upload-proof', { method: 'POST', body: formData })
+      if (response.ok) setProofUploaded(true)
+    } catch (err) {
+      console.error('Proof upload failed:', err)
+    }
+  }, [dataFileName])
 
   const handleFileUpload = useCallback(async (file: File) => {
     setLoading(true)
     setError(null)
     setReport(null)
+    setDataFileName(file.name)
+    setProofUploaded(false)
 
     try {
       const formData = new FormData()
@@ -109,6 +126,7 @@ export default function Home() {
       {/* Upload area */}
       <div className="animate-fade-in">
         <FileUpload onUpload={handleFileUpload} loading={loading} />
+        <ProofUpload onProofUpload={handleProofUpload} disabled={loading} />
       </div>
 
       {/* Error */}
