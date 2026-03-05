@@ -133,6 +133,10 @@ function profileSheet(sheet: XLSX.WorkSheet, sheetName: string): SheetProfile | 
 
   const totemBcPattern = /LEVEL\s*(\d+)\s*\(?\s*(?:BARCODE|BC)\s*\)?/i
   const totemHrPattern = /LEVEL\s*(\d+)\s*\(?\s*(?:HUMAN\s*READ(?:ABLE)?|HR)\s*\)?/i
+  // DLS-style numbered columns: "BC 1", "BC 2", "HR 1", "HR 2", "COLOR 1", etc.
+  const numberedBcPattern = /^BC\s+(\d+)$/i
+  const numberedHrPattern = /^HR\s+(\d+)$/i
+  const numberedColorPattern = /^COLOR\s+(\d+)$/i
   const totemBcCols: Record<number, string> = {}
   const totemHrCols: Record<number, string> = {}
 
@@ -140,11 +144,21 @@ function profileSheet(sheet: XLSX.WorkSheet, sheetName: string): SheetProfile | 
     const hu = h.toUpperCase().trim()
     const bcMatch = totemBcPattern.exec(h)
     const hrMatch = totemHrPattern.exec(h)
+    const numberedBcMatch = numberedBcPattern.exec(hu)
+    const numberedHrMatch = numberedHrPattern.exec(hu)
+    const numberedColorMatch = numberedColorPattern.exec(hu)
 
     if (bcMatch) {
       totemBcCols[parseInt(bcMatch[1])] = h
     } else if (hrMatch) {
       totemHrCols[parseInt(hrMatch[1])] = h
+    } else if (numberedBcMatch) {
+      // DLS-style: "BC 1", "BC 2" etc → treat as totem levels
+      totemBcCols[parseInt(numberedBcMatch[1])] = h
+    } else if (numberedHrMatch) {
+      totemHrCols[parseInt(numberedHrMatch[1])] = h
+    } else if (numberedColorMatch) {
+      profile.colorCols.push(h)
     } else if (/BAR\s*CODE|^BC$|BARCODE/i.test(hu)) {
       profile.barcodeCols.push(h)
     } else if (/HUMAN\s*READ|^HR$|READABLE/i.test(hu)) {
@@ -224,15 +238,22 @@ function profileSheet(sheet: XLSX.WorkSheet, sheetName: string): SheetProfile | 
   else if (headers.length <= 2 && !profile.aisleCol) profile.type = 'single_column'
   else if (profile.barcodeCols.length > 0 || profile.aisleCol) profile.type = 'rack_labels'
 
-  // Color coding
+  // Color coding - detect by header name or by cell values
+  const COLOR_NAMES = new Set(['RED', 'BLUE', 'GREEN', 'YELLOW', 'ORANGE', 'PINK', 'PURPLE', 'WHITE', 'BLACK', 'BROWN', 'GRAY', 'GREY', 'TEAL', 'CYAN', 'MAGENTA', 'LIME', 'NAVY', 'MAROON', 'OLIVE', 'AQUA', 'SILVER', 'GOLD', 'BEIGE', 'TAN', 'CORAL', 'SALMON', 'LAVENDER', 'VIOLET', 'INDIGO', 'CRIMSON'])
+  // Detect columns named COLOR (single, no number)
+  for (const h of headers) {
+    if (/^COLOR$/i.test(h.trim()) && !profile.colorCols.includes(h)) {
+      profile.colorCols.push(h)
+    }
+  }
   for (let r = dataStartRow; r <= Math.min(dataStartRow + 5, range.e.r); r++) {
     for (let c = range.s.c; c <= range.e.c; c++) {
       const v = getCellValue(sheet, r, c)
-      if (v && /^#[0-9a-fA-F]{6}$/.test(v)) {
-        const colIdx = c - range.s.c
-        if (colIdx < headers.length && !profile.colorCols.includes(headers[colIdx])) {
-          profile.colorCols.push(headers[colIdx])
-        }
+      if (!v) continue
+      const colIdx = c - range.s.c
+      if (colIdx >= headers.length || profile.colorCols.includes(headers[colIdx])) continue
+      if (/^#[0-9a-fA-F]{6}$/.test(v) || COLOR_NAMES.has(v.toUpperCase())) {
+        profile.colorCols.push(headers[colIdx])
       }
     }
   }
