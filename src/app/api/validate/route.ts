@@ -495,14 +495,25 @@ function checkLocationType(sheet: XLSX.WorkSheet, profile: SheetProfile, range: 
   return findings
 }
 
+function sheetItemName(profile: SheetProfile): string {
+  if (profile.type === 'aisle_signs') return 'signs'
+  if (profile.type === 'totem_labels') return 'totem labels'
+  if (profile.type === 'dock_signs') return 'signs'
+  if (profile.sheet.toLowerCase().includes('sign')) return 'signs'
+  if (profile.sheet.toLowerCase().includes('placard')) return 'placards'
+  if (profile.sheet.toLowerCase().includes('totem')) return 'totem labels'
+  return 'labels'
+}
+
 function checkRowCount(profile: SheetProfile): Finding[] {
-  const totalLabels = profile.is_totem ? profile.rows * profile.totem_levels : profile.rows
+  const totalItems = profile.is_totem ? profile.rows * profile.totem_levels : profile.rows
+  const itemName = sheetItemName(profile)
   return [{
     severity: 'info',
     check: 'row_count',
     message: profile.is_totem
-      ? `Sheet '${profile.sheet}': ${profile.rows} totem rows x ${profile.totem_levels} levels = ${totalLabels} labels`
-      : `Sheet '${profile.sheet}': ${profile.rows} labels`,
+      ? `Sheet '${profile.sheet}': ${profile.rows} totem rows x ${profile.totem_levels} levels = ${totalItems} ${itemName}`
+      : `Sheet '${profile.sheet}': ${profile.rows} ${itemName}`,
     sheet: profile.sheet,
     rows: [],
   }]
@@ -562,6 +573,8 @@ export async function POST(request: NextRequest) {
       status,
       sheets_analyzed: profiles.length,
       total_labels: totalLabels,
+      total_items_label: profiles.some(p => sheetItemName(p) === 'signs') && profiles.every(p => sheetItemName(p) === 'signs') ? 'signs'
+        : profiles.some(p => sheetItemName(p) === 'signs') ? 'items' : 'labels',
       summary: { errors, warnings, info },
       profiles: profiles.map(p => ({
         sheet: p.sheet,

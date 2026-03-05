@@ -31,9 +31,9 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function SeverityIcon({ severity }: { severity: string }) {
-  if (severity === 'error') return <span className="text-red-500 font-bold">[X]</span>
-  if (severity === 'warning') return <span className="text-yellow-500 font-bold">[!]</span>
-  return <span className="text-blue-400">[i]</span>
+  if (severity === 'error') return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-600 text-xs font-bold">✕</span>
+  if (severity === 'warning') return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold">!</span>
+  return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-bold">i</span>
 }
 
 function FindingRow({ finding }: { finding: Finding }) {
@@ -81,7 +81,7 @@ export default function ValidationResults({ report }: Props) {
           <div>
             <h2 className="text-xl font-bold text-cis-navy">{report.filename}</h2>
             <p className="text-sm text-gray-500">
-              {report.sheets_analyzed} sheet{report.sheets_analyzed !== 1 ? 's' : ''} analyzed &bull; {report.total_labels.toLocaleString()} labels
+              {report.sheets_analyzed} sheet{report.sheets_analyzed !== 1 ? 's' : ''} analyzed &bull; {report.total_labels.toLocaleString()} {report.total_items_label || 'labels'}
             </p>
           </div>
           <StatusBadge status={report.status} />

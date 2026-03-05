@@ -28,6 +28,7 @@ export type SheetProfile = {
 export type ValidationReport = {
   filename: string
   status: 'PASS' | 'PASS_WITH_WARNINGS' | 'FAIL'
+  total_items_label?: string
   sheets_analyzed: number
   total_labels: number
   summary: { errors: number; warnings: number; info: number }
