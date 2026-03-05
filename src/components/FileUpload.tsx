@@ -70,6 +70,11 @@ export default function FileUpload({ onUpload, loading }: Props) {
           <div className="animate-spin w-12 h-12 border-4 border-cis-navy border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-lg font-semibold text-cis-navy">Validating {fileName}...</p>
           <p className="text-sm text-gray-500 mt-2">Auto-detecting format and running 16 checks</p>
+          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 inline-block">
+            <p className="text-sm text-blue-700">
+              <span className="font-semibold">Heads up:</span> First analysis may take up to 60 seconds while our server wakes up. Hang tight — it&apos;s working!
+            </p>
+          </div>
         </div>
       ) : (
         <div>
