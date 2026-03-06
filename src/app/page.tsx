@@ -59,18 +59,28 @@ export default function Home() {
     }
   }, [dataFileName])
 
+  const [gateError, setGateError] = useState<string | null>(null)
+
   const handleEmailSubmit = useCallback(async (email: string, name?: string, company?: string) => {
     if (!pendingReport) return
-    setEmailCollected(true)
-    setReport(pendingReport)
-    // Log email to Supabase (fire and forget)
+    setGateError(null)
     try {
-      await fetch('/api/collect-lead', {
+      const res = await fetch('/api/collect-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, company, filename: dataFileName }),
       })
-    } catch (e) { /* ignore */ }
+      if (!res.ok) {
+        const data = await res.json()
+        setGateError(data.error || 'Unable to proceed. Please try again.')
+        return
+      }
+      setEmailCollected(true)
+      setReport(pendingReport)
+    } catch (e) {
+      setEmailCollected(true)
+      setReport(pendingReport)
+    }
   }, [pendingReport, dataFileName])
 
   const handleFileUpload = useCallback(async (file: File) => {
@@ -163,7 +173,7 @@ export default function Home() {
 
       {/* Email Gate */}
       {pendingReport && !emailCollected && (
-        <EmailGate onSubmit={handleEmailSubmit} filename={pendingReport.filename} />
+        <EmailGate onSubmit={handleEmailSubmit} filename={pendingReport.filename} error={gateError} />
       )}
 
       {/* Results */}

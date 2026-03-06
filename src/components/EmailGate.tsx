@@ -5,9 +5,10 @@ import { useState } from 'react'
 interface EmailGateProps {
   onSubmit: (email: string, name?: string, company?: string) => void
   filename: string
+  error?: string | null
 }
 
-export default function EmailGate({ onSubmit, filename }: EmailGateProps) {
+export default function EmailGate({ onSubmit, filename, error: serverError }: EmailGateProps) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [company, setCompany] = useState('')
@@ -55,6 +56,7 @@ export default function EmailGate({ onSubmit, filename }: EmailGateProps) {
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-cis-orange focus:ring-2 focus:ring-cis-orange/20 outline-none transition-all text-sm"
               />
               {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+              {serverError && <p className="text-red-500 text-xs mt-1">{serverError}</p>}
             </div>
 
             <div>

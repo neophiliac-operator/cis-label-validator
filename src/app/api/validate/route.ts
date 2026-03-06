@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import { notifyUpload } from '@/lib/notify'
+import { checkIpAllowed } from '@/lib/rateLimit'
 
 // ============================================================
 // CIS LABEL VALIDATOR - SERVER-SIDE ENGINE (TypeScript port)
@@ -548,6 +549,15 @@ function checkRowCount(profile: SheetProfile): Finding[] {
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+               request.headers.get('x-real-ip') || 'unknown'
+
+    // Check IP ban/rate limit
+    const ipCheck = await checkIpAllowed(ip)
+    if (!ipCheck.allowed) {
+      return NextResponse.json({ error: ipCheck.reason }, { status: 429 })
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
     
@@ -631,6 +641,7 @@ export async function POST(request: NextRequest) {
         errors,
         warnings,
         info,
+        ip_address: ip,
         findings: allFindings.slice(0, 100),
         profiles: profiles.map(p => ({ sheet: p.sheet, type: p.type, rows: p.rows })),
       })
