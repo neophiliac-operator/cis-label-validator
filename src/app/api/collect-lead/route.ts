@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkEmailAllowed, checkIpAllowed } from '@/lib/rateLimit'
+import { notifyUpload } from '@/lib/notify'
 
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
                request.headers.get('x-real-ip') || 'unknown'
-    const { email, name, company, filename } = await request.json()
+    const { email, name, company, filename, scanResults } = await request.json()
 
     if (!email) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 })
@@ -36,6 +37,22 @@ export async function POST(request: NextRequest) {
 
     if (error) console.error('[LEAD] DB error:', error)
     else console.log(`[LEAD] Captured: ${email} (${company || 'no company'}) from ${ip}`)
+
+    // Send consolidated email notification with lead info + scan results
+    if (scanResults) {
+      notifyUpload({
+        filename: scanResults.filename || filename || 'unknown',
+        status: scanResults.status || 'UNKNOWN',
+        errors: scanResults.summary?.errors || 0,
+        warnings: scanResults.summary?.warnings || 0,
+        info: scanResults.summary?.info || 0,
+        sheets: scanResults.sheets_analyzed || 0,
+        labels: scanResults.total_labels || 0,
+        email: email.toLowerCase(),
+        name: name || undefined,
+        company: company || undefined,
+      }).catch(() => {})
+    }
 
     return NextResponse.json({ success: true })
   } catch (err: any) {

@@ -68,7 +68,7 @@ export default function Home() {
       const res = await fetch('/api/collect-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, company, filename: dataFileName }),
+        body: JSON.stringify({ email, name, company, filename: dataFileName, scanResults: pendingReport }),
       })
       if (!res.ok) {
         const data = await res.json()

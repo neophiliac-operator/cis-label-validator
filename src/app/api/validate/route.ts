@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
-import { notifyUpload } from '@/lib/notify'
 import { checkIpAllowed } from '@/lib/rateLimit'
 
 // ============================================================
@@ -649,16 +648,7 @@ export async function POST(request: NextRequest) {
       else console.log(`[DB] Logged: ${file.name} → ${status}`)
     } catch (e) { /* ignore */ }
 
-    // Send email notification (non-blocking)
-    notifyUpload({
-      filename: file.name,
-      status,
-      errors,
-      warnings,
-      info,
-      sheets: profiles.length,
-      labels: totalLabels,
-    }).catch(() => {})
+    // Email notification moved to collect-lead (sent after user provides contact info)
 
     return NextResponse.json(responseData)
   } catch (err: any) {
