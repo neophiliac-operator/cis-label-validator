@@ -16,12 +16,20 @@ export default function EmailGate({ onSubmit, filename, error: serverError }: Em
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!name.trim()) {
+      setError('Please enter your name')
+      return
+    }
+    if (!company.trim()) {
+      setError('Please enter your company name')
+      return
+    }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email address')
       return
     }
     setError('')
-    onSubmit(email, name || undefined, company || undefined)
+    onSubmit(email, name, company)
   }
 
   return (
@@ -61,26 +69,28 @@ export default function EmailGate({ onSubmit, filename, error: serverError }: Em
 
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                Name <span className="text-gray-300">(optional)</span>
+                Name <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Smith"
+                required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-cis-orange focus:ring-2 focus:ring-cis-orange/20 outline-none transition-all text-sm"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                Company <span className="text-gray-300">(optional)</span>
+                Company <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 placeholder="Acme Warehousing"
+                required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-cis-orange focus:ring-2 focus:ring-cis-orange/20 outline-none transition-all text-sm"
               />
             </div>
