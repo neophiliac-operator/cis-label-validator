@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import FileUpload from '@/components/FileUpload'
 import ProofUpload from '@/components/ProofUpload'
+import EmailGate from '@/components/EmailGate'
 import ValidationResults from '@/components/ValidationResults'
 
 export type Finding = {
@@ -39,10 +40,12 @@ export type ValidationReport = {
 
 export default function Home() {
   const [report, setReport] = useState<ValidationReport | null>(null)
+  const [pendingReport, setPendingReport] = useState<ValidationReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dataFileName, setDataFileName] = useState<string | null>(null)
   const [proofUploaded, setProofUploaded] = useState(false)
+  const [emailCollected, setEmailCollected] = useState(false)
 
   const handleProofUpload = useCallback(async (file: File) => {
     try {
@@ -56,12 +59,28 @@ export default function Home() {
     }
   }, [dataFileName])
 
+  const handleEmailSubmit = useCallback(async (email: string, name?: string, company?: string) => {
+    if (!pendingReport) return
+    setEmailCollected(true)
+    setReport(pendingReport)
+    // Log email to Supabase (fire and forget)
+    try {
+      await fetch('/api/collect-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, company, filename: dataFileName }),
+      })
+    } catch (e) { /* ignore */ }
+  }, [pendingReport, dataFileName])
+
   const handleFileUpload = useCallback(async (file: File) => {
     setLoading(true)
     setError(null)
     setReport(null)
+    setPendingReport(null)
     setDataFileName(file.name)
     setProofUploaded(false)
+    setEmailCollected(false)
 
     try {
       const formData = new FormData()
@@ -78,7 +97,7 @@ export default function Home() {
       }
 
       const data = await response.json()
-      setReport(data)
+      setPendingReport(data) // Hold report behind email gate
     } catch (err: any) {
       setError(err.message || 'Something went wrong')
     } finally {
@@ -142,8 +161,13 @@ export default function Home() {
         </div>
       )}
 
+      {/* Email Gate */}
+      {pendingReport && !emailCollected && (
+        <EmailGate onSubmit={handleEmailSubmit} filename={pendingReport.filename} />
+      )}
+
       {/* Results */}
-      {report && (
+      {report && emailCollected && (
         <div className="animate-slide-up">
           <ValidationResults report={report} />
         </div>
